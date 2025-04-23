@@ -1,0 +1,578 @@
+# The 'inspect.txt' file is used to show all the details of each operation in NN model.
+# Field Description:
+# target info: target device information.
+# inspection summary: summary report of inspection# graph name: The name of graph representing of the NN model.
+# node name: The name of node in graph.
+# input nodes: The parents of the node.
+# output nodes: The children of node.
+# op type: The type of operation.
+# output shape: The shape of node output tensor(Data layout follows XIR requirements).
+# op attributes: The attributes of operation.(The description is consistent with that of XIR)
+# assigend device: The device type on which the operation execute.
+# hardware constrains: If the operation is assigned to cpu. This filed will give some hits about why the DPU does not support this operation.
+# node messages: This filed will give some extra information about the node.(For example, if quantizer need to insert a permute operation to convert data layout from 'NCHW' to 'NHWC' or from 'NCHW' to 'NHWC' for deployment. This message will be add to node_messages.)
+# source range: points to a source which is a stack track and helps to find the exact location of this operation in source code.
+
+# Hints:
+# Due to data layout difference between Pytorch('NCHW') and XIR('NHWC'), 
+# if quantizer inserts some permutes(which the node message will inform us about),
+# these permutes may prevent the entire model from being deployed to the target device.
+# Sometimes, we can cancel out this automatically inserted permute by inserting a permute in the original float model,
+# sometimes, we can't.
+# These two examples are used to demonstrated this problem:
+# Example 1:
+# Pytorch: conv:[1, 64, 1, 1] -> reshape(shape=(1, -1):[1, 64] =>
+# Xmodel: conv:[1, 1, 1, 64] -> permute(order=(0, 3, 1, 2)):[1, 64, 1, 1] -> reshape(shape=(1, -1):[1, 64]
+# Insert a permute in the original float model:
+# Pytorch: conv:[1, 64, 1, 1] -> permute(order=(0, 2, 3, 1)):[1, 1, 1, 64] -> reshape(shape=(1, -1):[1, 64] =>
+# Xmodel: conv:[1, 1, 1, 64] -> reshape(shape=(1, -1):[1, 64]
+# In example 1, the permute inserted by quantizer can be canceled out by inserting a permute in float model. 
+# After model modification, output shape and data memory layout are the same compared with before.
+# Example 2:
+# Pytorch: conv:[1, 3, 4, 4] -> reshape(shape=(1, -1):[1, 48] =>
+# Xmodel: conv:[1, 4, 4, 3] -> permute(order=(0, 3, 1, 2)):[1, 3, 4, 4] -> reshape(shape=(1, -1):[1, 48]
+# Insert a permute in the original float model:
+# Pytorch: conv:[1, 3, 4, 4] -> permute(order=(0, 2, 3, 1)):[1, 4, 4, 3] -> reshape(shape=(1, -1):[1, 48] =>
+# Xmodel: conv:[1, 4, 4, 3] -> reshape(shape=(1, -1):[1, 48]
+# In example 2, the permute inserted by quantizer can't be canceled out by inserting a permute in float model. 
+# After model modification, output data memory layout changed.
+# Explanation of some hardware constraints messages:
+  "Try to assign {pattern name} to DPU failed.": The compiler refuses to deploy this pattern on DPU.
+  "Convert nndct graph to XIR failed.": If you encounter this problem, please contact the developer.
+  "{op type} can't be converted to XIR.": The operator cannot be represented by XIR.
+  "{op type} can't be assigned to DPU.": Although the operator can be converted to XIR, it cannot be deployed on the DPU.
+  
+================================================================================================================================================================
+target info:
+================================================================================================================================================================
+DPUCAHX8L_ISA0_SP
+
+================================================================================================================================================================
+inspection summary:
+================================================================================================================================================================
+All the operators are assigned to the DPU.
+================================================================================================================================================================
+graph name: LeNet
+================================================================================================================================================================
+node name: LeNet::input_0
+input nodes: []
+output nodes: ['LeNet::LeNet/Conv2d[conv1]/ret.3']
+op type: nndct_input
+outputs shape: [1, 32, 32, 3]
+op attributes:
+assigned device: user
+================================================================================================================================================================
+node name: LeNet::LeNet/Conv2d[conv1]/ret.3
+input nodes: ['LeNet::input_0']
+output nodes: ['LeNet::LeNet/ret.5']
+op type: nndct_conv2d
+outputs shape: [1, 28, 28, 6]
+op attributes:
+  kernel: [5, 5]
+  stride: [1, 1]
+  dilation: [1, 1]
+  pad_mode: 0
+  pad: [0, 0, 0, 0]
+  group: 1
+  bias_term: True
+  in_dim: 3
+  out_dim: 6
+assigned device: dpu
+source range:
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/_tensor.py(1279): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/override_torch_function.py(52): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/conv.py(459): _conv_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/conv.py(463): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/workspace/xmodel_generator/pt_model/lenet.py(16): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/rich_in_out_helper.py(202): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(118): wrapper
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(127): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1194): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(1184): _get_trace_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/utils/jit_utils.py(403): trace_and_get_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(130): _trace_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(75): _get_fw_graph_from_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(104): build_torch_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/parser.py(78): __call__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(97): parse_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(248): prepare_quantizable_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/utils.py(26): prepare_deployable_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/inspector.py(52): inspect
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/apis.py(248): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(16): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(26): <module>
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(87): _run_code
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(194): _run_module_as_main
+
+================================================================================================================================================================
+node name: LeNet::LeNet/ret.5
+input nodes: ['LeNet::LeNet/Conv2d[conv1]/ret.3']
+output nodes: ['LeNet::LeNet/MaxPool2d[pool]/337']
+op type: nndct_relu
+outputs shape: [1, 28, 28, 6]
+op attributes:
+assigned device: dpu
+source range:
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/functional.py(1457): relu
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/_tensor.py(1279): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/override_torch_function.py(52): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/overrides.py(1534): handle_torch_function
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/functional.py(1453): relu
+/workspace/xmodel_generator/pt_model/lenet.py(16): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/rich_in_out_helper.py(202): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(118): wrapper
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(127): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1194): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(1184): _get_trace_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/utils/jit_utils.py(403): trace_and_get_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(130): _trace_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(75): _get_fw_graph_from_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(104): build_torch_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/parser.py(78): __call__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(97): parse_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(248): prepare_quantizable_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/utils.py(26): prepare_deployable_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/inspector.py(52): inspect
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/apis.py(248): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(16): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(26): <module>
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(87): _run_code
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(194): _run_module_as_main
+
+================================================================================================================================================================
+node name: LeNet::LeNet/MaxPool2d[pool]/337
+input nodes: ['LeNet::LeNet/ret.5']
+output nodes: ['LeNet::LeNet/Conv2d[conv2]/ret.7']
+op type: nndct_maxpool
+outputs shape: [1, 14, 14, 6]
+op attributes:
+  kernel: [2, 2]
+  stride: [2, 2]
+  pad_mode: 0
+  pad: [0, 0, 0, 0]
+  global: False
+assigned device: dpu
+source range:
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/functional.py(782): _max_pool2d
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/_jit_internal.py(485): fn
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/override_torch_function.py(286): max_pool2d
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/override_torch_function.py(54): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/overrides.py(1534): handle_torch_function
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/functional.py(769): _max_pool2d
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/_jit_internal.py(485): fn
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/pooling.py(166): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/workspace/xmodel_generator/pt_model/lenet.py(16): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/rich_in_out_helper.py(202): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(118): wrapper
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(127): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1194): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(1184): _get_trace_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/utils/jit_utils.py(403): trace_and_get_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(130): _trace_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(75): _get_fw_graph_from_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(104): build_torch_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/parser.py(78): __call__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(97): parse_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(248): prepare_quantizable_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/utils.py(26): prepare_deployable_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/inspector.py(52): inspect
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/apis.py(248): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(16): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(26): <module>
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(87): _run_code
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(194): _run_module_as_main
+
+================================================================================================================================================================
+node name: LeNet::LeNet/Conv2d[conv2]/ret.7
+input nodes: ['LeNet::LeNet/MaxPool2d[pool]/337']
+output nodes: ['LeNet::LeNet/ret.9']
+op type: nndct_conv2d
+outputs shape: [1, 10, 10, 16]
+op attributes:
+  kernel: [5, 5]
+  stride: [1, 1]
+  dilation: [1, 1]
+  pad_mode: 0
+  pad: [0, 0, 0, 0]
+  group: 1
+  bias_term: True
+  in_dim: 6
+  out_dim: 16
+assigned device: dpu
+source range:
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/_tensor.py(1279): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/override_torch_function.py(52): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/conv.py(459): _conv_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/conv.py(463): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/workspace/xmodel_generator/pt_model/lenet.py(17): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/rich_in_out_helper.py(202): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(118): wrapper
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(127): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1194): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(1184): _get_trace_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/utils/jit_utils.py(403): trace_and_get_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(130): _trace_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(75): _get_fw_graph_from_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(104): build_torch_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/parser.py(78): __call__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(97): parse_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(248): prepare_quantizable_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/utils.py(26): prepare_deployable_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/inspector.py(52): inspect
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/apis.py(248): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(16): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(26): <module>
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(87): _run_code
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(194): _run_module_as_main
+
+================================================================================================================================================================
+node name: LeNet::LeNet/ret.9
+input nodes: ['LeNet::LeNet/Conv2d[conv2]/ret.7']
+output nodes: ['LeNet::LeNet/MaxPool2d[pool]/375']
+op type: nndct_relu
+outputs shape: [1, 10, 10, 16]
+op attributes:
+assigned device: dpu
+source range:
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/functional.py(1457): relu
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/_tensor.py(1279): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/override_torch_function.py(52): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/overrides.py(1534): handle_torch_function
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/functional.py(1453): relu
+/workspace/xmodel_generator/pt_model/lenet.py(17): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/rich_in_out_helper.py(202): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(118): wrapper
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(127): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1194): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(1184): _get_trace_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/utils/jit_utils.py(403): trace_and_get_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(130): _trace_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(75): _get_fw_graph_from_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(104): build_torch_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/parser.py(78): __call__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(97): parse_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(248): prepare_quantizable_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/utils.py(26): prepare_deployable_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/inspector.py(52): inspect
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/apis.py(248): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(16): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(26): <module>
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(87): _run_code
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(194): _run_module_as_main
+
+================================================================================================================================================================
+node name: LeNet::LeNet/MaxPool2d[pool]/375
+input nodes: ['LeNet::LeNet/ret.9']
+output nodes: ['LeNet::LeNet/ret.11']
+op type: nndct_maxpool
+outputs shape: [1, 5, 5, 16]
+op attributes:
+  kernel: [2, 2]
+  stride: [2, 2]
+  pad_mode: 0
+  pad: [0, 0, 0, 0]
+  global: False
+assigned device: dpu
+source range:
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/functional.py(782): _max_pool2d
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/_jit_internal.py(485): fn
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/override_torch_function.py(286): max_pool2d
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/override_torch_function.py(54): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/overrides.py(1534): handle_torch_function
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/functional.py(769): _max_pool2d
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/_jit_internal.py(485): fn
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/pooling.py(166): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/workspace/xmodel_generator/pt_model/lenet.py(17): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/rich_in_out_helper.py(202): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(118): wrapper
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(127): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1194): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(1184): _get_trace_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/utils/jit_utils.py(403): trace_and_get_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(130): _trace_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(75): _get_fw_graph_from_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(104): build_torch_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/parser.py(78): __call__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(97): parse_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(248): prepare_quantizable_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/utils.py(26): prepare_deployable_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/inspector.py(52): inspect
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/apis.py(248): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(16): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(26): <module>
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(87): _run_code
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(194): _run_module_as_main
+
+================================================================================================================================================================
+node name: LeNet::LeNet/ret.11
+input nodes: ['LeNet::LeNet/MaxPool2d[pool]/375']
+output nodes: ['LeNet::LeNet/Linear[fc1]/ret.13']
+op type: nndct_reshape
+outputs shape: [1, 400]
+op attributes:
+  shape: [1, 400]
+assigned device: dpu
+source range:
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/_tensor.py(1279): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/override_torch_function.py(52): __torch_function__
+/workspace/xmodel_generator/pt_model/lenet.py(18): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/rich_in_out_helper.py(202): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(118): wrapper
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(127): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1194): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(1184): _get_trace_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/utils/jit_utils.py(403): trace_and_get_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(130): _trace_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(75): _get_fw_graph_from_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(104): build_torch_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/parser.py(78): __call__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(97): parse_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(248): prepare_quantizable_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/utils.py(26): prepare_deployable_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/inspector.py(52): inspect
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/apis.py(248): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(16): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(26): <module>
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(87): _run_code
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(194): _run_module_as_main
+
+================================================================================================================================================================
+node name: LeNet::LeNet/Linear[fc1]/ret.13
+input nodes: ['LeNet::LeNet/ret.11']
+output nodes: ['LeNet::LeNet/ret.15']
+op type: nndct_dense
+outputs shape: [1, 120]
+op attributes:
+  bias_term: True
+  in_dim: 400
+  out_dim: 120
+assigned device: dpu
+source range:
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/_tensor.py(1279): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/override_torch_function.py(52): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/linear.py(114): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/workspace/xmodel_generator/pt_model/lenet.py(19): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/rich_in_out_helper.py(202): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(118): wrapper
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(127): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1194): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(1184): _get_trace_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/utils/jit_utils.py(403): trace_and_get_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(130): _trace_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(75): _get_fw_graph_from_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(104): build_torch_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/parser.py(78): __call__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(97): parse_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(248): prepare_quantizable_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/utils.py(26): prepare_deployable_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/inspector.py(52): inspect
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/apis.py(248): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(16): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(26): <module>
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(87): _run_code
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(194): _run_module_as_main
+
+================================================================================================================================================================
+node name: LeNet::LeNet/ret.15
+input nodes: ['LeNet::LeNet/Linear[fc1]/ret.13']
+output nodes: ['LeNet::LeNet/Linear[fc2]/ret.17']
+op type: nndct_relu
+outputs shape: [1, 120]
+op attributes:
+assigned device: dpu
+source range:
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/functional.py(1457): relu
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/_tensor.py(1279): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/override_torch_function.py(52): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/overrides.py(1534): handle_torch_function
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/functional.py(1453): relu
+/workspace/xmodel_generator/pt_model/lenet.py(19): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/rich_in_out_helper.py(202): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(118): wrapper
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(127): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1194): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(1184): _get_trace_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/utils/jit_utils.py(403): trace_and_get_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(130): _trace_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(75): _get_fw_graph_from_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(104): build_torch_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/parser.py(78): __call__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(97): parse_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(248): prepare_quantizable_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/utils.py(26): prepare_deployable_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/inspector.py(52): inspect
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/apis.py(248): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(16): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(26): <module>
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(87): _run_code
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(194): _run_module_as_main
+
+================================================================================================================================================================
+node name: LeNet::LeNet/Linear[fc2]/ret.17
+input nodes: ['LeNet::LeNet/ret.15']
+output nodes: ['LeNet::LeNet/ret.19']
+op type: nndct_dense
+outputs shape: [1, 84]
+op attributes:
+  bias_term: True
+  in_dim: 120
+  out_dim: 84
+assigned device: dpu
+source range:
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/_tensor.py(1279): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/override_torch_function.py(52): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/linear.py(114): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/workspace/xmodel_generator/pt_model/lenet.py(20): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/rich_in_out_helper.py(202): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(118): wrapper
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(127): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1194): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(1184): _get_trace_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/utils/jit_utils.py(403): trace_and_get_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(130): _trace_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(75): _get_fw_graph_from_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(104): build_torch_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/parser.py(78): __call__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(97): parse_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(248): prepare_quantizable_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/utils.py(26): prepare_deployable_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/inspector.py(52): inspect
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/apis.py(248): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(16): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(26): <module>
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(87): _run_code
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(194): _run_module_as_main
+
+================================================================================================================================================================
+node name: LeNet::LeNet/ret.19
+input nodes: ['LeNet::LeNet/Linear[fc2]/ret.17']
+output nodes: ['LeNet::LeNet/Linear[fc3]/ret']
+op type: nndct_relu
+outputs shape: [1, 84]
+op attributes:
+assigned device: dpu
+source range:
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/functional.py(1457): relu
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/_tensor.py(1279): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/override_torch_function.py(52): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/overrides.py(1534): handle_torch_function
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/functional.py(1453): relu
+/workspace/xmodel_generator/pt_model/lenet.py(20): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/rich_in_out_helper.py(202): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(118): wrapper
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(127): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1194): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(1184): _get_trace_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/utils/jit_utils.py(403): trace_and_get_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(130): _trace_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(75): _get_fw_graph_from_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(104): build_torch_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/parser.py(78): __call__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(97): parse_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(248): prepare_quantizable_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/utils.py(26): prepare_deployable_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/inspector.py(52): inspect
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/apis.py(248): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(16): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(26): <module>
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(87): _run_code
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(194): _run_module_as_main
+
+================================================================================================================================================================
+node name: LeNet::LeNet/Linear[fc3]/ret
+input nodes: ['LeNet::LeNet/ret.19']
+output nodes: ['LeNet::return_0']
+op type: nndct_dense
+outputs shape: [1, 10]
+op attributes:
+  bias_term: True
+  in_dim: 84
+  out_dim: 10
+assigned device: dpu
+source range:
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/_tensor.py(1279): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/override_torch_function.py(52): __torch_function__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/linear.py(114): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/workspace/xmodel_generator/pt_model/lenet.py(21): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/rich_in_out_helper.py(202): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1182): _slow_forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1212): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(118): wrapper
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(127): forward
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py(1194): _call_impl
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/torch/jit/_trace.py(1184): _get_trace_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/utils/jit_utils.py(403): trace_and_get_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(130): _trace_graph_from_model
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(75): _get_fw_graph_from_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/trace_helper.py(104): build_torch_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/parse/parser.py(78): __call__
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(97): parse_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/qproc/utils.py(248): prepare_quantizable_module
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/utils.py(26): prepare_deployable_graph
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/hardware_v3/inspector.py(52): inspect
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/site-packages/pytorch_nndct/apis.py(248): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(16): inspect
+/workspace/xmodel_generator/vai_flow/inspector.py(26): <module>
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(87): _run_code
+/opt/vitis_ai/conda/envs/vitis-ai-pytorch/lib/python3.8/runpy.py(194): _run_module_as_main
+

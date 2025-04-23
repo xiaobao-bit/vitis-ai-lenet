@@ -1,0 +1,34 @@
+{
+  "param":
+  {
+    "LeNet::conv1.weight":[[8,8]],
+    "LeNet::conv1.bias":[[8,9]],
+    "LeNet::conv2.weight":[[8,8]],
+    "LeNet::conv2.bias":[[8,8]],
+    "LeNet::fc1.weight":[[8,8]],
+    "LeNet::fc1.bias":[[8,8]],
+    "LeNet::fc2.weight":[[8,8]],
+    "LeNet::fc2.bias":[[8,8]],
+    "LeNet::fc3.weight":[[8,8]],
+    "LeNet::fc3.bias":[[8,8]]
+  },
+  "output":
+  {
+    "LeNet::nndct_input_0":[[8,6]],
+    "LeNet::nndct_relu_2":[[8,5]],
+    "LeNet::nndct_maxpool_3":[[8,5]],
+    "LeNet::nndct_relu_5":[[8,5]],
+    "LeNet::nndct_maxpool_6":[[8,5]],
+    "LeNet::nndct_relu_9":[[8,4]],
+    "LeNet::nndct_relu_11":[[8,4]],
+    "LeNet::nndct_dense_12":[[8,3]]
+  },
+  "input":
+  {
+
+  },
+  "fast_finetuned":false,
+  "bias_corrected":true,
+  "version":"3.5.0+60df3f1+torch1.13.1",
+  "graph_md5":"304feafcb51b2c4ea4db47c7510e7923"
+}
